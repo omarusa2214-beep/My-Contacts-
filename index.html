@@ -1,0 +1,2806 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="midnight">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=0.6, user-scalable=no">
+    <title>Contacts VCF Pro - مدير جهات الاتصال</title>
+    <!-- Google Fonts & Material Symbols -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <style>
+        /* ==================== متغيرات الثيمات الثلاثة ==================== */
+        :root, [data-theme="midnight"] {
+            --bg-main: #040711;
+            --bg-secondary: #0a1022;
+            --bg-card: #0f172e;
+            --bg-card-hover: #172242;
+            --bg-search: #111a36;
+            --bg-nav: #080d1d;
+            --bg-pill-active: #1e2952;
+            --text-primary: #eef2ff;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent: #38bdf8;
+            --accent-soft: rgba(56, 189, 248, 0.16);
+            --fab-bg: #38bdf8;
+            --fab-text: #040711;
+            --border-color: rgba(56, 189, 248, 0.14);
+            --danger: #f43f5e;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --whatsapp: #25D366;
+            --telegram: #229ED9;
+            --shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+        }
+
+        [data-theme="dark"] {
+            --bg-main: #121316;
+            --bg-secondary: #1a1c20;
+            --bg-card: #1f2127;
+            --bg-card-hover: #292b32;
+            --bg-search: #25272e;
+            --bg-nav: #1b1d22;
+            --bg-pill-active: #4a3e2d;
+            --text-primary: #e5e2e1;
+            --text-secondary: #c7c5d0;
+            --text-muted: #8f909a;
+            --accent: #ffdea5;
+            --accent-soft: rgba(255, 222, 165, 0.15);
+            --fab-bg: #ffdea5;
+            --fab-text: #261900;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --danger: #ff5449;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --whatsapp: #25D366;
+            --telegram: #229ED9;
+            --shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+        }
+
+        [data-theme="light"] {
+            /* مطابق لألوان تطبيق Contacts الأصلي في الصورة */
+            --bg-main: #fbf4ef;
+            --bg-secondary: #f4ebe4;
+            --bg-card: #fffbff;
+            --bg-card-hover: #f7efe8;
+            --bg-search: #efe6df;
+            --bg-nav: #f4ebe4;
+            --bg-pill-active: #fbe1b6;
+            --text-primary: #1f1b16;
+            --text-secondary: #50453a;
+            --text-muted: #827568;
+            --accent: #7c5800;
+            --accent-soft: rgba(124, 88, 0, 0.12);
+            --fab-bg: #fbe1a6;
+            --fab-text: #271900;
+            --border-color: rgba(0, 0, 0, 0.06);
+            --danger: #dc2626;
+            --success: #059669;
+            --warning: #d97706;
+            --whatsapp: #1da851;
+            --telegram: #0088cc;
+            --shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+            font-family: 'Cairo', 'Roboto', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background-color 0.25s ease, color 0.25s ease;
+            padding-bottom: 92px;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            user-select: none;
+            vertical-align: middle;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+        }
+
+        /* ==================== شاشة القفل (الباسورد المشفر) ==================== */
+        #lockScreen {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at top, #132046 0%, #040711 100%);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            transition: opacity 0.35s ease, visibility 0.35s ease;
+        }
+        #lockScreen.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .lock-card {
+            width: 100%;
+            max-width: 400px;
+            background: rgba(15, 23, 46, 0.88);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            border-radius: 28px;
+            padding: 32px 24px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75);
+            color: #eef2ff;
+        }
+        .lock-icon-wrap {
+            width: 76px;
+            height: 76px;
+            border-radius: 50%;
+            background: rgba(56, 189, 248, 0.15);
+            border: 2px solid rgba(56, 189, 248, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 18px;
+            color: #38bdf8;
+        }
+        .lock-icon-wrap .material-symbols-outlined {
+            font-size: 38px;
+        }
+        .lock-title {
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+        .lock-subtitle {
+            font-size: 13px;
+            color: #94a3b8;
+            margin-bottom: 24px;
+        }
+        .pass-input-group {
+            position: relative;
+            margin-bottom: 16px;
+        }
+        .pass-input {
+            width: 100%;
+            padding: 14px 46px 14px 18px;
+            border-radius: 16px;
+            border: 1.5px solid rgba(56, 189, 248, 0.3);
+            background: rgba(4, 7, 17, 0.85);
+            color: #fff;
+            font-size: 16px;
+            text-align: center;
+            letter-spacing: 2px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            direction: ltr;
+        }
+        .pass-input:focus {
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+        }
+        .toggle-pass-btn {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            padding: 4px;
+        }
+        .unlock-btn {
+            width: 100%;
+            padding: 14px;
+            border-radius: 16px;
+            border: none;
+            background: linear-gradient(135deg, #38bdf8, #0284c7);
+            color: #040711;
+            font-size: 16px;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: transform 0.15s, filter 0.2s;
+        }
+        .unlock-btn:active {
+            transform: scale(0.98);
+        }
+        .lock-error {
+            color: #f43f5e;
+            font-size: 13px;
+            margin-top: 12px;
+            min-height: 20px;
+            font-weight: 600;
+        }
+
+        /* ==================== الحاوية الرئيسية ==================== */
+        .app-container {
+            max-width: 680px;
+            margin: 0 auto;
+            padding: 12px 14px 30px;
+        }
+
+        /* ==================== شريط البحث العلوي (مطابق لتطبيق Contacts) ==================== */
+        .top-search-bar {
+            display: flex;
+            align-items: center;
+            background: var(--bg-search);
+            border-radius: 999px;
+            padding: 8px 14px;
+            gap: 10px;
+            margin-bottom: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .search-icon {
+            color: var(--text-secondary);
+            font-size: 22px;
+        }
+        .search-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            font-size: 15px;
+            font-weight: 500;
+        }
+        .search-input::placeholder {
+            color: var(--text-secondary);
+        }
+        .clear-search-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: none;
+            padding: 2px;
+        }
+        .profile-avatar-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            color: #fff;
+            border: 2px solid var(--bg-card);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        /* ==================== شريط الثيمات وحالة السيرفر ==================== */
+        .status-theme-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+            background: var(--bg-secondary);
+            padding: 8px 12px;
+            border-radius: 18px;
+            border: 1px solid var(--border-color);
+        }
+        .firebase-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-secondary);
+        }
+        .status-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: var(--warning);
+            box-shadow: 0 0 8px var(--warning);
+        }
+        .status-dot.online {
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+        .status-dot.error {
+            background: var(--danger);
+            box-shadow: 0 0 8px var(--danger);
+        }
+
+        .theme-switcher {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: var(--bg-main);
+            padding: 4px;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+        }
+        .theme-btn {
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 11.5px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s ease;
+        }
+        .theme-btn .material-symbols-outlined {
+            font-size: 15px;
+        }
+        .theme-btn.active {
+            background: var(--bg-pill-active);
+            color: var(--text-primary);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        /* ==================== لوحة الأزرار السريعة ==================== */
+        .quick-actions-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        @media (min-width: 480px) {
+            .quick-actions-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+        .action-chip-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 8px;
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            text-align: center;
+        }
+        .action-chip-btn:hover {
+            background: var(--bg-card-hover);
+        }
+        .action-chip-btn:active {
+            transform: scale(0.97);
+        }
+        .action-chip-btn .material-symbols-outlined {
+            font-size: 18px;
+            color: var(--accent);
+        }
+        .action-chip-btn.active-mode {
+            background: var(--bg-pill-active);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .action-chip-btn.danger-btn .material-symbols-outlined {
+            color: var(--danger);
+        }
+        .action-chip-btn.success-btn .material-symbols-outlined {
+            color: var(--success);
+        }
+        .action-chip-btn.warn-btn .material-symbols-outlined {
+            color: var(--warning);
+        }
+
+        /* شريط إجراءات المحدد */
+        #selectionActionBar {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-pill-active);
+            border: 1px solid var(--accent);
+            padding: 10px 14px;
+            border-radius: 16px;
+            margin-bottom: 12px;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        #selectionActionBar.show {
+            display: flex;
+        }
+        .sel-count-label {
+            font-size: 13.5px;
+            font-weight: 800;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .sel-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .mini-btn {
+            border: none;
+            padding: 6px 12px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .mini-btn.export-sel {
+            background: var(--accent);
+            color: var(--fab-text);
+        }
+        .mini-btn.delete-sel {
+            background: var(--danger);
+            color: #fff;
+        }
+        .mini-btn.cancel-sel {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        /* ==================== شريط فلتر All contacts العلوي ==================== */
+        .contacts-subheader {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 6px 10px;
+            direction: ltr;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .all-contacts-dropdown {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 6px 10px;
+            border-radius: 10px;
+        }
+        .all-contacts-dropdown:hover {
+            background: var(--accent-soft);
+        }
+        .current-sort-badge {
+            font-size: 11px;
+            background: var(--accent-soft);
+            color: var(--accent);
+            padding: 3px 9px;
+            border-radius: 999px;
+            font-weight: 700;
+            cursor: pointer;
+            direction: rtl;
+        }
+        .subheader-right-icons {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .icon-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .icon-btn:hover {
+            background: var(--accent-soft);
+            color: var(--text-primary);
+        }
+
+        /* ==================== قائمة جهات الاتصال ==================== */
+        .letter-group {
+            margin-bottom: 10px;
+            direction: ltr;
+        }
+        .letter-header {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            padding: 6px 16px;
+            text-transform: uppercase;
+        }
+        .group-cards-container {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-card);
+            padding: 11px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.15s ease, transform 0.1s ease;
+            position: relative;
+            user-select: none;
+        }
+        .contact-item:first-child {
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+        }
+        .contact-item:last-child {
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+        }
+        .contact-item:hover {
+            background: var(--bg-card-hover);
+        }
+        .contact-item.selected {
+            background: var(--bg-pill-active);
+        }
+
+        /* دوائر الألوان */
+        .contact-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 19px;
+            font-weight: 600;
+            flex-shrink: 0;
+            transition: transform 0.2s ease, background 0.2s ease;
+            font-family: 'Roboto', 'Cairo', sans-serif;
+        }
+        .avatar-purple { background: #d6bcfd; color: #2b1154; }
+        .avatar-green  { background: #7fd68b; color: #0b3916; }
+        .avatar-amber  { background: #f6bd16; color: #3c2a00; }
+        .avatar-pink   { background: #f5a8d0; color: #491130; }
+        .avatar-blue   { background: #6fd0f6; color: #053548; }
+
+        .contact-item.selected .contact-avatar {
+            background: var(--accent) !important;
+            color: var(--fab-text) !important;
+        }
+
+        .contact-info {
+            flex: 1;
+            min-width: 0;
+            text-align: left;
+        }
+        .contact-name {
+            font-size: 15.5px;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.35;
+        }
+        .contact-phones-preview {
+            font-size: 12.5px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 2px;
+            font-family: 'Roboto', sans-serif;
+        }
+        .multi-num-badge {
+            display: inline-block;
+            background: var(--accent-soft);
+            color: var(--accent);
+            font-size: 10.5px;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 99px;
+            margin-left: 6px;
+        }
+
+        /* أزرار واتساب وتلجرام بجانب كل رقم في القائمة والنافذة */
+        .row-social-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        .social-circle-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            text-decoration: none;
+            transition: transform 0.15s ease, filter 0.15s ease;
+            flex-shrink: 0;
+        }
+        .social-circle-btn:hover {
+            transform: scale(1.08);
+            filter: brightness(1.1);
+        }
+        .social-circle-btn:active {
+            transform: scale(0.94);
+        }
+        .social-circle-btn.wa-btn {
+            background: rgba(37, 211, 102, 0.16);
+            color: var(--whatsapp);
+            border: 1px solid rgba(37, 211, 102, 0.35);
+        }
+        .social-circle-btn.tg-btn {
+            background: rgba(34, 158, 217, 0.16);
+            color: var(--telegram);
+            border: 1px solid rgba(34, 158, 217, 0.35);
+        }
+        .social-circle-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        /* مؤشر التحديد واحد بواحد */
+        .one-by-one-check {
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            border: 2px solid var(--text-muted);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        body.select-one-mode .one-by-one-check {
+            display: flex;
+        }
+        .contact-item.selected .one-by-one-check {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: var(--fab-text);
+        }
+
+        /* ==================== الزر العائم + (FAB) ==================== */
+        .fab-add-btn {
+            position: fixed;
+            bottom: 92px;
+            right: 22px;
+            width: 58px;
+            height: 58px;
+            border-radius: 18px;
+            background: var(--fab-bg);
+            color: var(--fab-text);
+            border: none;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 90;
+            transition: transform 0.2s ease, background 0.25s ease;
+        }
+        .fab-add-btn:hover {
+            transform: scale(1.05);
+        }
+        .fab-add-btn:active {
+            transform: scale(0.95);
+        }
+        .fab-add-btn .material-symbols-outlined {
+            font-size: 28px;
+            font-weight: 500;
+        }
+
+        /* ==================== شريط التنقل السفلي ==================== */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 74px;
+            background: var(--bg-nav);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            z-index: 100;
+            direction: ltr;
+            padding: 0 12px;
+        }
+        .nav-tab {
+            flex: 1;
+            max-width: 160px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            cursor: pointer;
+            padding: 6px 0;
+        }
+        .nav-pill {
+            width: 64px;
+            height: 32px;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s ease;
+        }
+        .nav-tab.active .nav-pill {
+            background: var(--bg-pill-active);
+            color: var(--text-primary);
+        }
+        .nav-tab.active .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24;
+        }
+        .nav-label {
+            font-size: 12px;
+            font-weight: 600;
+            font-family: 'Roboto', 'Cairo', sans-serif;
+        }
+        .nav-tab.active .nav-label {
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
+        /* ==================== التبويبات الفرعية ==================== */
+        .tab-view {
+            display: none;
+        }
+        .tab-view.active {
+            display: block;
+        }
+
+        .stats-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 16px;
+            text-align: center;
+        }
+        .stat-num {
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--accent);
+        }
+        .stat-title {
+            font-size: 12.5px;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .organize-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .organize-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .organize-card:hover {
+            background: var(--bg-card-hover);
+        }
+        .org-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .org-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 14px;
+            background: var(--accent-soft);
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .org-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .org-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* ==================== النوافذ المنبثقة (Modals) ==================== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.72);
+            backdrop-filter: blur(6px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .modal-overlay.show {
+            display: flex;
+        }
+        .modal-box {
+            width: 100%;
+            max-width: 480px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 26px;
+            padding: 22px;
+            max-height: 88vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow);
+        }
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        .modal-title {
+            font-size: 18px;
+            font-weight: 800;
+        }
+        .form-group {
+            margin-bottom: 14px;
+        }
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: var(--text-secondary);
+        }
+        .form-input, .form-textarea {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-main);
+            color: var(--text-primary);
+            font-size: 14.5px;
+            outline: none;
+        }
+        .form-input:focus, .form-textarea:focus {
+            border-color: var(--accent);
+        }
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+        .btn-primary {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 14px;
+            border: none;
+            background: var(--accent);
+            color: var(--fab-text);
+            font-weight: 800;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .btn-secondary {
+            padding: 12px 16px;
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .btn-danger {
+            padding: 12px 16px;
+            border-radius: 14px;
+            border: none;
+            background: var(--danger);
+            color: #fff;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* قائمة الأرقام داخل التفاصيل مع أزرار واتساب وتلجرام واتصال ونسخ */
+        .phone-row-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-secondary);
+            padding: 10px 12px;
+            border-radius: 14px;
+            margin-bottom: 8px;
+            direction: ltr;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .phone-number-text {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-family: 'Roboto', sans-serif;
+        }
+        .phone-row-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .circle-action {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--accent);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            text-decoration: none;
+            transition: transform 0.15s ease;
+        }
+        .circle-action:hover {
+            transform: scale(1.08);
+        }
+
+        /* قائمة الـ 10 خيارات للترتيب والأولويات */
+        .sort-options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .sort-option-btn {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px;
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 13.5px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            text-align: right;
+        }
+        .sort-option-btn:hover {
+            background: var(--bg-card-hover);
+        }
+        .sort-option-btn.active {
+            background: var(--bg-pill-active);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .sort-opt-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sort-num-badge {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--accent-soft);
+            color: var(--accent);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+
+        /* إشعار التوست (Toast) */
+        #toastBox {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%) translateY(30px);
+            background: #1e293b;
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 999px;
+            font-size: 13.5px;
+            font-weight: 700;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            z-index: 2000;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.25s ease;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            white-space: nowrap;
+        }
+        #toastBox.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 45px 20px;
+            background: var(--bg-card);
+            border-radius: 24px;
+            border: 1px dashed var(--border-color);
+            margin-top: 12px;
+        }
+        .load-more-btn {
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--accent);
+            font-weight: 700;
+            cursor: pointer;
+        }
+    </style>
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link rel="manifest" href="./manifest.json?v=v1793131015403">
+    <meta name="theme-color" content="#ff00ff">
+    <link rel="apple-touch-icon" href="./icon-192.png?v=v1793131015403">
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js?v=v1793131015403')
+            .then(reg => console.log('SW Registered'))
+            .catch(err => console.log('SW Failed', err));
+        });
+      }
+    </script>
+</head>
+<body>
+
+    <!-- ==================== 1. شاشة الباسورد المشفرة ==================== -->
+    <div id="lockScreen">
+        <div class="lock-card">
+            <div class="lock-icon-wrap">
+                <span class="material-symbols-outlined">encrypted</span>
+            </div>
+            <div class="lock-title">حماية جهات الاتصال</div>
+            <div class="lock-subtitle">أدخل كلمة المرور المشفرة للدخول إلى النظام</div>
+            <form id="unlockForm" onsubmit="handleUnlock(event)">
+                <div class="pass-input-group">
+                    <input type="password" id="passwordInput" class="pass-input" placeholder="•••••••••" autocomplete="off" required autofocus>
+                    <button type="button" class="toggle-pass-btn" onclick="togglePassVisibility()">
+                        <span class="material-symbols-outlined" id="passEyeIcon">visibility</span>
+                    </button>
+                </div>
+                <button type="submit" class="unlock-btn">
+                    <span class="material-symbols-outlined">lock_open</span>
+                    <span>فتح الملف</span>
+                </button>
+                <div class="lock-error" id="lockErrorMsg"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== 2. الواجهة الرئيسية ==================== -->
+    <div class="app-container">
+
+        <!-- شريط البحث العلوي المطابق لتطبيق Contacts -->
+        <div class="top-search-bar" dir="ltr">
+            <span class="material-symbols-outlined search-icon">search</span>
+            <input type="text" id="searchInput" class="search-input" placeholder="Search contacts" oninput="handleSearch()">
+            <button class="clear-search-btn" id="clearSearchBtn" onclick="clearSearch()">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+            <button class="profile-avatar-btn" onclick="lockAppNow()" title="قفل الموقع">
+                <span class="material-symbols-outlined" style="font-size:19px;">lock</span>
+            </button>
+        </div>
+
+        <!-- شريط حالة سيرفر فايبر + أزرار التحويل بين الثيمات الثلاثة -->
+        <div class="status-theme-bar">
+            <div class="firebase-status">
+                <span class="status-dot" id="firebaseDot"></span>
+                <span id="firebaseStatusText">جاري الاتصال بسيرفر فايبر...</span>
+            </div>
+
+            <div class="theme-switcher">
+                <button class="theme-btn active" id="btnThemeMidnight" onclick="setTheme('midnight')">
+                    <span class="material-symbols-outlined">nights_stay</span>
+                    <span>ميد نايت</span>
+                </button>
+                <button class="theme-btn" id="btnThemeDark" onclick="setTheme('dark')">
+                    <span class="material-symbols-outlined">dark_mode</span>
+                    <span>دارك</span>
+                </button>
+                <button class="theme-btn" id="btnThemeLight" onclick="setTheme('light')">
+                    <span class="material-symbols-outlined">light_mode</span>
+                    <span>لايت</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- input مخفي لاستيراد ملفات VCF -->
+        <input type="file" id="vcfFileInput" accept=".vcf,text/vcard,text/x-vcard,text/plain,*/*" multiple style="display:none" onchange="handleVcfFileSelect(event)">
+
+        <!-- أزرار التحكم الأساسية الشاملة -->
+        <div class="quick-actions-grid">
+            <button class="action-chip-btn success-btn" onclick="triggerVcfImport()">
+                <span class="material-symbols-outlined">upload_file</span>
+                <span>استيراد ملف VCF</span>
+            </button>
+
+            <button class="action-chip-btn" onclick="exportVcfFile(false)">
+                <span class="material-symbols-outlined">download</span>
+                <span>تصدير ملف VCF</span>
+            </button>
+
+            <button class="action-chip-btn" id="btnSelectAll" onclick="toggleSelectAll()">
+                <span class="material-symbols-outlined">select_all</span>
+                <span id="selectAllLabel">تحديد الكل</span>
+            </button>
+
+            <button class="action-chip-btn" id="btnSelectOneByOne" onclick="toggleSelectOneByOneMode()">
+                <span class="material-symbols-outlined">checklist_rtl</span>
+                <span>تحديد واحد بواحد</span>
+            </button>
+
+            <button class="action-chip-btn warn-btn" onclick="openDuplicateNamesModal()">
+                <span class="material-symbols-outlined">person_remove</span>
+                <span>مسح الاسم المتكرر</span>
+            </button>
+
+            <button class="action-chip-btn danger-btn" onclick="removeDuplicatePhones()">
+                <span class="material-symbols-outlined">phonelink_erase</span>
+                <span>مسح الرقم المتكرر</span>
+            </button>
+
+            <button class="action-chip-btn" onclick="openSortModal()">
+                <span class="material-symbols-outlined">sort</span>
+                <span>الترتيب (10 أولويات)</span>
+            </button>
+
+            <button class="action-chip-btn success-btn" onclick="convertAllPhonesToEgyptianDirect(true)">
+                <span class="material-symbols-outlined">autorenew</span>
+                <span>تحويل 00201 لمصري</span>
+            </button>
+        </div>
+
+        <!-- شريط يظهر عند تحديد جهات اتصال -->
+        <div id="selectionActionBar">
+            <div class="sel-count-label">
+                <span class="material-symbols-outlined">check_circle</span>
+                <span>المحدد: <strong id="selectedCountNum">0</strong></span>
+            </div>
+            <div class="sel-actions">
+                <button class="mini-btn export-sel" onclick="exportVcfFile(true)">
+                    <span class="material-symbols-outlined" style="font-size:16px">download</span>
+                    <span>تصدير المحدد</span>
+                </button>
+                <button class="mini-btn delete-sel" onclick="deleteSelectedContacts()">
+                    <span class="material-symbols-outlined" style="font-size:16px">delete</span>
+                    <span>حذف المحدد</span>
+                </button>
+                <button class="mini-btn cancel-sel" onclick="clearAllSelections()">إلغاء</button>
+            </div>
+        </div>
+
+        <!-- ==================== التبويب الأول: Contacts (الصفحة الأساسية) ==================== -->
+        <div id="tabContacts" class="tab-view active">
+            <!-- الهيدر الفرعي المطابق للصورة -->
+            <div class="contacts-subheader">
+                <button class="all-contacts-dropdown" onclick="openSortModal()">
+                    <span class="material-symbols-outlined" style="font-size:20px;">contacts</span>
+                    <span>All contacts (<span id="totalContactsCount">0</span>)</span>
+                    <span class="material-symbols-outlined" style="font-size:18px;">expand_more</span>
+                </button>
+
+                <span class="current-sort-badge" id="currentSortBadge" onclick="openSortModal()">
+                    الترتيب: أبجدي (A → Z)
+                </span>
+
+                <div class="subheader-right-icons">
+                    <button class="icon-btn" onclick="openRawVcfModal()" title="معاينة كود VCF الخام">
+                        <span class="material-symbols-outlined">label</span>
+                    </button>
+                    <button class="icon-btn" onclick="openSortModal()" title="10 خيارات ترتيب وأولويات">
+                        <span class="material-symbols-outlined">filter_list</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- حاوية قائمة الأسماء المقسمة بالحروف -->
+            <div id="contactsListWrapper"></div>
+        </div>
+
+        <!-- ==================== التبويب الثاني: Highlights ==================== -->
+        <div id="tabHighlights" class="tab-view">
+            <div class="stats-cards-grid">
+                <div class="stat-card">
+                    <div class="stat-num" id="statTotalContacts">0</div>
+                    <div class="stat-title">إجمالي جهات الاتصال</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-num" id="statTotalNumbers">0</div>
+                    <div class="stat-title">إجمالي الأرقام المسجلة</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-num" id="statDupNames">0</div>
+                    <div class="stat-title">أسماء متكررة مكتشفة</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-num" id="statDupPhones">0</div>
+                    <div class="stat-title">أرقام متكررة مكتشفة</div>
+                </div>
+            </div>
+
+            <div class="organize-list">
+                <div class="organize-card" onclick="loadSampleVcfData()">
+                    <div class="org-left">
+                        <div class="org-icon"><span class="material-symbols-outlined">science</span></div>
+                        <div>
+                            <div class="org-title">إدراج بيانات تجريبية من صورك</div>
+                            <div class="org-desc">إضافة أسماء تجريبية لاختبار مسح المتكرر والتصدير فوراً</div>
+                        </div>
+                    </div>
+                    <span class="material-symbols-outlined">chevron_left</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== التبويب الثالث: Organize ==================== -->
+        <div id="tabOrganize" class="tab-view">
+            <div class="organize-list">
+                <div class="organize-card" onclick="triggerVcfImport()">
+                    <div class="org-left">
+                        <div class="org-icon"><span class="material-symbols-outlined">file_open</span></div>
+                        <div>
+                            <div class="org-title">استيراد من ملف VCF</div>
+                            <div class="org-desc">قراءة ملفات vCard 2.1 / 3.0 وفك تشفير UTF-8 وتحويل 00201 لمصري مباشر</div>
+                        </div>
+                    </div>
+                    <span class="material-symbols-outlined">chevron_left</span>
+                </div>
+
+                <div class="organize-card" onclick="exportVcfFile(false)">
+                    <div class="org-left">
+                        <div class="org-icon"><span class="material-symbols-outlined">ios_share</span></div>
+                        <div>
+                            <div class="org-title">تصدير جميع جهات الاتصال (VCF)</div>
+                            <div class="org-desc">حفظ ملف vcards جاهز للاستيراد على أي هاتف</div>
+                        </div>
+                    </div>
+                    <span class="material-symbols-outlined">chevron_left</span>
+                </div>
+
+                <div class="organize-card" onclick="convertAllPhonesToEgyptianDirect(true)">
+                    <div class="org-left">
+                        <div class="org-icon"><span class="material-symbols-outlined">autorenew</span></div>
+                        <div>
+                            <div class="org-title">تحويل الأرقام التي تبدأ بـ 00201 إلى رقم مصري مباشر</div>
+                            <div class="org-desc">تحويل 00201 / +00201 / +201 إلى 010 و 011 و 012 و 015 مباشر بدون كود</div>
+                        </div>
+                    </div>
+                    <span class="material-symbols-outlined">chevron_left</span>
+                </div>
+
+                <div class="organize-card" onclick="openSortModal()">
+                    <div class="org-left">
+                        <div class="org-icon"><span class="material-symbols-outlined">sort</span></div>
+                        <div>
+                            <div class="org-title">ترتيب وأولويات الظهور (10 خيارات)</div>
+                            <div class="org-desc">تحديد أي الأسماء أو الشبكات (010 / 011 / 012 / عربي / إنجليزي) يظهر أولاً</div>
+                        </div>
+                    </div>
+                    <span class="material-symbols-outlined">chevron_left</span>
+                </div>
+
+                <div class="organize-card" onclick="openDuplicateNamesModal()">
+                    <div class="org-left">
+                        <div class="org-icon"><span class="material-symbols-outlined">group_remove</span></div>
+                        <div>
+                            <div class="org-title">مسح أو دمج الأسماء المتكررة</div>
+                            <div class="org-desc">التخلص من تكرار الأسماء المتطابقة بضغطة واحدة</div>
+                        </div>
+                    </div>
+                    <span class="material-symbols-outlined">chevron_left</span>
+                </div>
+
+                <div class="organize-card" onclick="removeDuplicatePhones()">
+                    <div class="org-left">
+                        <div class="org-icon"><span class="material-symbols-outlined">dialpad</span></div>
+                        <div>
+                            <div class="org-title">مسح الأرقام المتكررة الذكي</div>
+                            <div class="org-desc">توحيد صيغ (+002 / 002 / الشرطات) وحذف الأرقام المكررة</div>
+                        </div>
+                    </div>
+                    <span class="material-symbols-outlined">chevron_left</span>
+                </div>
+
+                <div class="organize-card" onclick="forceSyncToFirebase()">
+                    <div class="org-left">
+                        <div class="org-icon"><span class="material-symbols-outlined">cloud_sync</span></div>
+                        <div>
+                            <div class="org-title">مزامنة يدوية مع سيرفر فايبر</div>
+                            <div class="org-desc">رفع وحفظ قاعدة البيانات الحالية على Firebase Realtime DB</div>
+                        </div>
+                    </div>
+                    <span class="material-symbols-outlined">chevron_left</span>
+                </div>
+
+                <div class="organize-card" onclick="deleteAllContactsConfirm()">
+                    <div class="org-left">
+                        <div class="org-icon" style="color:var(--danger);background:rgba(244,63,94,0.12);">
+                            <span class="material-symbols-outlined">delete_forever</span>
+                        </div>
+                        <div>
+                            <div class="org-title" style="color:var(--danger);">مسح جميع جهات الاتصال</div>
+                            <div class="org-desc">تفريغ القائمة بالكامل من الموقع والسيرفر</div>
+                        </div>
+                    </div>
+                    <span class="material-symbols-outlined">chevron_left</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- الزر العائم + لإضافة جهة اتصال جديدة -->
+    <button class="fab-add-btn" onclick="openAddOrEditModal()" title="إضافة جهة اتصال">
+        <span class="material-symbols-outlined">add</span>
+    </button>
+
+    <!-- شريط التنقل السفلي -->
+    <nav class="bottom-nav">
+        <button class="nav-tab active" id="navBtnContacts" onclick="switchBottomTab('contacts')">
+            <div class="nav-pill">
+                <span class="material-symbols-outlined">person</span>
+            </div>
+            <span class="nav-label">Contacts</span>
+        </button>
+
+        <button class="nav-tab" id="navBtnHighlights" onclick="switchBottomTab('highlights')">
+            <div class="nav-pill">
+                <span class="material-symbols-outlined">reviews</span>
+            </div>
+            <span class="nav-label">Highlights</span>
+        </button>
+
+        <button class="nav-tab" id="navBtnOrganize" onclick="switchBottomTab('organize')">
+            <div class="nav-pill">
+                <span class="material-symbols-outlined">contacts_product</span>
+            </div>
+            <span class="nav-label">Organize</span>
+        </button>
+    </nav>
+
+    <!-- ==================== نافذة إضافة / تعديل / عرض جهة اتصال (مع أزرار واتساب وتلجرام لكل رقم) ==================== -->
+    <div class="modal-overlay" id="contactModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title" id="contactModalTitle">تفاصيل جهة الاتصال</div>
+                <button class="icon-btn" onclick="closeModal('contactModal')">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <input type="hidden" id="editContactId">
+
+            <div class="form-group">
+                <label class="form-label">الاسم (FN)</label>
+                <input type="text" id="contactNameInput" class="form-input" placeholder="مثال: Abdallah Naga">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">أرقام الهاتف (رقم في كل سطر - يتم تحويل 00201 لمصري مباشر تلقائياً)</label>
+                <textarea id="contactPhonesInput" class="form-textarea" rows="4" dir="ltr" placeholder="01063016504"></textarea>
+            </div>
+
+            <!-- قائمة الأرقام مع زرار واتساب + زرار تلجرام + اتصال + نسخ بجانب كل رقم -->
+            <div id="quickCallList" style="margin-bottom:12px;"></div>
+
+            <div class="modal-actions">
+                <button class="btn-primary" onclick="saveContactFromModal()">حفظ التعديلات</button>
+                <button class="btn-danger" id="btnDeleteSingle" onclick="deleteSingleFromModal()">حذف</button>
+                <button class="btn-secondary" onclick="closeModal('contactModal')">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== نافذة الـ 10 خيارات للترتيب والأولويات ==================== -->
+    <div class="modal-overlay" id="sortModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title">الترتيب وأولويات الظهور (10 خيارات)</div>
+                <button class="icon-btn" onclick="closeModal('sortModal')">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">
+                اختر نظام الترتيب والأولوية لتحديد أي جهات الاتصال تظهر في أول القائمة:
+            </p>
+            <div class="sort-options-list" id="sortOptionsContainer"></div>
+            <div class="modal-actions">
+                <button class="btn-secondary" style="width:100%;" onclick="closeModal('sortModal')">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== نافذة خيارات مسح الاسم المتكرر ==================== -->
+    <div class="modal-overlay" id="dupNamesModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title">مسح الاسم المتكرر</div>
+                <button class="icon-btn" onclick="closeModal('dupNamesModal')">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <p id="dupNamesSummary" style="font-size:14px;color:var(--text-secondary);line-height:1.6;margin-bottom:14px;"></p>
+            <div class="modal-actions" style="flex-direction:column;">
+                <button class="btn-primary" onclick="executeDuplicateNamesCleanup('merge')">
+                    دمج أرقام الأسماء المتكررة في اسم واحد وحذف التكرار
+                </button>
+                <button class="btn-danger" onclick="executeDuplicateNamesCleanup('delete')">
+                    حذف الأسماء المكررة والإبقاء على أول ظهور فقط
+                </button>
+                <button class="btn-secondary" onclick="closeModal('dupNamesModal')">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== نافذة معاينة ولصق كود VCF الخام ==================== -->
+    <div class="modal-overlay" id="rawVcfModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title">معاينة / لصق كود VCF خام</div>
+                <button class="icon-btn" onclick="closeModal('rawVcfModal')">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">يمكنك معاينة الكود أو لصق محتوى ملف VCF مباشرة هنا:</label>
+                <textarea id="rawVcfTextarea" class="form-textarea" rows="10" dir="ltr" style="font-family:monospace;font-size:12px;"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-primary" onclick="importFromRawTextarea()">استيراد من النص</button>
+                <button class="btn-secondary" onclick="copyRawVcfText()">نسخ الكود</button>
+                <button class="btn-secondary" onclick="closeModal('rawVcfModal')">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- إشعار Toast -->
+    <div id="toastBox"></div>
+
+    <script>
+        /* =====================================================================
+           أيقونات SVG الرسمية لواتساب وتلجرام
+        ===================================================================== */
+        const WHATSAPP_SVG = `<svg viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.1.824zm-3.423-14.416c-6.627 0-12 5.373-12 12 0 2.126.556 4.122 1.529 5.854l-1.529 5.586 5.719-1.5c1.685.922 3.616 1.448 5.672 1.448 6.627 0 12-5.373 12-12s-5.373-12-11.391-11.388z"/></svg>`;
+        const TELEGRAM_SVG = `<svg viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>`;
+
+        /* =====================================================================
+           1. نظام تشفير وفحص الباسورد (#ZMsd42d*)
+        ===================================================================== */
+        const ENCRYPTED_PASS_HEX = "6a0c2e0319bea5c09b";
+
+        function encryptInputToHex(str) {
+            let hex = "";
+            for (let i = 0; i < str.length; i++) {
+                const code = str.charCodeAt(i) ^ (i * 13 + 73);
+                hex += (code & 0xff).toString(16).padStart(2, "0");
+            }
+            return hex;
+        }
+
+        function handleUnlock(e) {
+            e.preventDefault();
+            const input = document.getElementById("passwordInput").value;
+            const errEl = document.getElementById("lockErrorMsg");
+
+            if (encryptInputToHex(input) === ENCRYPTED_PASS_HEX) {
+                sessionStorage.setItem("vcf_app_unlocked", "true");
+                document.getElementById("lockScreen").classList.add("hidden");
+                errEl.textContent = "";
+                document.getElementById("passwordInput").value = "";
+                showToast("تم فتح القفل بنجاح 🔓");
+            } else {
+                errEl.textContent = "❌ كلمة المرور غير صحيحة! حاول مرة أخرى.";
+                const card = document.querySelector(".lock-card");
+                card.style.transform = "translateX(-8px)";
+                setTimeout(() => card.style.transform = "translateX(8px)", 80);
+                setTimeout(() => card.style.transform = "translateX(0)", 160);
+            }
+        }
+
+        function lockAppNow() {
+            sessionStorage.removeItem("vcf_app_unlocked");
+            document.getElementById("lockScreen").classList.remove("hidden");
+            document.getElementById("passwordInput").focus();
+        }
+
+        function togglePassVisibility() {
+            const inp = document.getElementById("passwordInput");
+            const icon = document.getElementById("passEyeIcon");
+            if (inp.type === "password") {
+                inp.type = "text";
+                icon.textContent = "visibility_off";
+            } else {
+                inp.type = "password";
+                icon.textContent = "visibility";
+            }
+        }
+
+        /* =====================================================================
+           2. تحويل أرقام 00201 / +00201 / +201 إلى الرقم المصري المباشر (010/011/012/015)
+              وتجهيز روابط واتساب وتلجرام المباشرة
+        ===================================================================== */
+        function formatToEgyptianDirectPhone(rawPhone) {
+            if (!rawPhone) return "";
+            // إزالة المسافات والشرطات والأقواس والنقاط
+            let cleaned = String(rawPhone).trim().replace(/[\s\-\(\)\.]/g, "");
+
+            // تحويل جميع بادئات مصر (00201 / +00201 / +201 / 201 / +01) إلى 010, 011, 012, 015 مباشر
+            if (/^\+00201[0125]\d{8}$/.test(cleaned)) {
+                return "0" + cleaned.slice(5); // +002010... -> 010...
+            }
+            if (/^00201[0125]\d{8}$/.test(cleaned)) {
+                return "0" + cleaned.slice(4); // 002010... -> 010...
+            }
+            if (/^\+201[0125]\d{8}$/.test(cleaned)) {
+                return "0" + cleaned.slice(3); // +2010... -> 010...
+            }
+            if (/^201[0125]\d{8}$/.test(cleaned)) {
+                return "0" + cleaned.slice(2); // 2010... -> 010...
+            }
+            if (/^\+01[0125]\d{8}$/.test(cleaned)) {
+                return cleaned.slice(1);      // +010... -> 010...
+            }
+            if (/^00201[0125]/.test(cleaned)) {
+                return "0" + cleaned.slice(4);
+            }
+            if (/^\+00201[0125]/.test(cleaned)) {
+                return "0" + cleaned.slice(5);
+            }
+            if (/^01[0125]\d{8}$/.test(cleaned)) {
+                return cleaned;
+            }
+            return cleaned;
+        }
+
+        // تحويل كل الأرقام في القائمة إلى الرقم المصري المباشر بدون 00201
+        function convertAllPhonesToEgyptianDirect(showNotification = false) {
+            let changedCount = 0;
+            contactsList = contactsList.map(c => {
+                const updatedPhones = (Array.isArray(c.phones) ? c.phones : []).map(p => {
+                    const direct = formatToEgyptianDirectPhone(p);
+                    if (direct !== p) changedCount++;
+                    return direct;
+                });
+                return { ...c, phones: updatedPhones };
+            });
+
+            if (changedCount > 0 || showNotification) {
+                syncDataToServer();
+                renderContactsUI();
+                if (showNotification) {
+                    showToast(`✅ تم تحويل ${changedCount} رقم إلى الرقم المصري المباشر (010/011/012)`);
+                }
+            }
+        }
+
+        // تجهيز رقم دولي لروابط واتساب وتلجرام (مثلاً 01063016504 يتحول في الرابط إلى 201063016504)
+        function getInternationalDigitsForChat(rawPhone) {
+            const direct = formatToEgyptianDirectPhone(rawPhone);
+            let digits = direct.replace(/[^\d+]/g, "");
+
+            if (/^01[0125]\d{8}$/.test(digits)) {
+                return "2" + digits; // 201063016504
+            }
+            if (digits.startsWith("+00")) {
+                return digits.slice(3);
+            }
+            if (digits.startsWith("00")) {
+                return digits.slice(2);
+            }
+            if (digits.startsWith("+")) {
+                return digits.slice(1);
+            }
+            return digits.replace(/\D/g, "");
+        }
+
+        function getWhatsAppUrl(phone) {
+            const intl = getInternationalDigitsForChat(phone);
+            return `https://wa.me/${intl}`;
+        }
+
+        function getTelegramUrl(phone) {
+            const intl = getInternationalDigitsForChat(phone);
+            return `https://t.me/+${intl}`;
+        }
+
+        /* =====================================================================
+           3. إعدادات الربط بسيرفر فايبر (Firebase Realtime Database)
+        ===================================================================== */
+        const firebaseConfig = {
+            apiKey: "AIzaSyBtIkF-UhkeFa-cxutgJAQpR7K_IjKxloc",
+            authDomain: "spygame-337ee.firebaseapp.com",
+            databaseURL: "https://spygame-337ee-default-rtdb.firebaseio.com", 
+            projectId: "spygame-337ee",
+            storageBucket: "spygame-337ee.firebasestorage.app"
+        };
+
+        let db = null;
+        let contactsRef = null;
+        let isRemoteUpdating = false;
+
+        function initFirebaseServer() {
+            try {
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(firebaseConfig);
+                }
+                db = firebase.database();
+                contactsRef = db.ref("vcf_contacts_store");
+
+                db.ref(".info/connected").on("value", (snap) => {
+                    const dot = document.getElementById("firebaseDot");
+                    const txt = document.getElementById("firebaseStatusText");
+                    if (snap.val() === true) {
+                        dot.className = "status-dot online";
+                        txt.textContent = "متصل بسيرفر فايبر (مزامنة فورية)";
+                    } else {
+                        dot.className = "status-dot";
+                        txt.textContent = "وضع محلي (جاري انتظار السيرفر...)";
+                    }
+                });
+
+                contactsRef.on("value", (snapshot) => {
+                    if (isRemoteUpdating) return;
+                    const data = snapshot.val();
+                    if (data && Array.isArray(data.items)) {
+                        contactsList = data.items.map((c, idx) => ({
+                            id: c.id || ("c_" + idx + "_" + Date.now()),
+                            name: c.name || "بدون اسم",
+                            phones: Array.isArray(c.phones)
+                                ? c.phones.map(formatToEgyptianDirectPhone)
+                                : []
+                        }));
+                        saveToLocalCache();
+                        renderContactsUI();
+                    } else if (data && typeof data === "object" && !data.items) {
+                        const arr = Object.values(data);
+                        if (arr.length > 0 && arr[0].name !== undefined) {
+                            contactsList = arr.map(c => ({
+                                ...c,
+                                phones: Array.isArray(c.phones)
+                                    ? c.phones.map(formatToEgyptianDirectPhone)
+                                    : []
+                            }));
+                            saveToLocalCache();
+                            renderContactsUI();
+                        }
+                    }
+                }, (err) => {
+                    console.warn("Firebase Read Warning:", err);
+                    document.getElementById("firebaseDot").className = "status-dot error";
+                    document.getElementById("firebaseStatusText").textContent = "تخزين محلي نشط";
+                });
+            } catch (e) {
+                console.error("Firebase Init Error:", e);
+            }
+        }
+
+        function syncDataToServer() {
+            saveToLocalCache();
+            if (!contactsRef) return;
+            isRemoteUpdating = true;
+            contactsRef.set({
+                updatedAt: new Date().toISOString(),
+                total: contactsList.length,
+                items: contactsList
+            }).then(() => {
+                setTimeout(() => { isRemoteUpdating = false; }, 300);
+            }).catch((err) => {
+                isRemoteUpdating = false;
+                console.warn("Firebase Write Error:", err);
+            });
+        }
+
+        function forceSyncToFirebase() {
+            syncDataToServer();
+            showToast("☁️ تم رفع ومزامنة البيانات مع سيرفر فايبر بنجاح");
+        }
+
+        function saveToLocalCache() {
+            try {
+                localStorage.setItem("vcf_contacts_backup", JSON.stringify(contactsList));
+            } catch (e) {}
+        }
+
+        function loadFromLocalCache() {
+            try {
+                const raw = localStorage.getItem("vcf_contacts_backup");
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        contactsList = parsed.map(c => ({
+                            ...c,
+                            phones: Array.isArray(c.phones)
+                                ? c.phones.map(formatToEgyptianDirectPhone)
+                                : []
+                        }));
+                    }
+                }
+            } catch (e) {}
+        }
+
+        /* =====================================================================
+           4. إدارة الثيمات (Midnight Mode أساسي + Dark Mode + Light Mode)
+        ===================================================================== */
+        function setTheme(themeName) {
+            document.documentElement.setAttribute("data-theme", themeName);
+            localStorage.setItem("vcf_preferred_theme", themeName);
+
+            document.getElementById("btnThemeMidnight").classList.toggle("active", themeName === "midnight");
+            document.getElementById("btnThemeDark").classList.toggle("active", themeName === "dark");
+            document.getElementById("btnThemeLight").classList.toggle("active", themeName === "light");
+        }
+
+        /* =====================================================================
+           5. نظام الـ 10 خيارات للترتيب والأولويات
+        ===================================================================== */
+        const SORT_MODES = [
+            { id: "az",          label: "ترتيب أبجدي تصاعدي (A → Z / أ → ي)" },
+            { id: "za",          label: "ترتيب أبجدي تنازلي (Z → A / ي → أ)" },
+            { id: "ar_first",    label: "أولوية الأسماء العربية أولاً ثم الإنجليزية" },
+            { id: "en_first",    label: "أولوية الأسماء الإنجليزية أولاً ثم العربية" },
+            { id: "vodafone_010",label: "أولوية فودافون (010) يظهر في الأول" },
+            { id: "etisalat_011",label: "أولوية اتصالات (011) يظهر في الأول" },
+            { id: "orange_012",  label: "أولوية أورانج (012) يظهر في الأول" },
+            { id: "we_015_intl", label: "أولوية وي (015) والأرقام الدولية في الأول" },
+            { id: "multi_phones",label: "أولوية الأكثر أرقاماً أولاً (متعدد الأرقام)" },
+            { id: "dup_first",   label: "أولوية الأسماء المتكررة تظهر في الأول" }
+        ];
+
+        let currentSortMode = "az";
+
+        function openSortModal() {
+            const container = document.getElementById("sortOptionsContainer");
+            container.innerHTML = SORT_MODES.map((m, idx) => `
+                <button class="sort-option-btn ${currentSortMode === m.id ? 'active' : ''}" onclick="applySortMode('${m.id}')">
+                    <div class="sort-opt-left">
+                        <span class="sort-num-badge">${idx + 1}</span>
+                        <span>${m.label}</span>
+                    </div>
+                    <span class="material-symbols-outlined">
+                        ${currentSortMode === m.id ? 'radio_button_checked' : 'radio_button_unchecked'}
+                    </span>
+                </button>
+            `).join("");
+            document.getElementById("sortModal").classList.add("show");
+        }
+
+        function applySortMode(modeId) {
+            currentSortMode = modeId;
+            const found = SORT_MODES.find(m => m.id === modeId);
+            if (found) {
+                document.getElementById("currentSortBadge").textContent = "الترتيب: " + found.label;
+                showToast(`🔢 تم تفعيل: ${found.label}`);
+            }
+            closeModal("sortModal");
+            renderContactsUI();
+        }
+
+        function isArabicName(name) {
+            return /[\u0600-\u06FF]/.test((name || "").trim());
+        }
+
+        function hasPhonePrefix(contact, prefix) {
+            const phones = Array.isArray(contact.phones) ? contact.phones : [];
+            return phones.some(p => formatToEgyptianDirectPhone(p).startsWith(prefix));
+        }
+
+        function isWeOrInternational(contact) {
+            const phones = Array.isArray(contact.phones) ? contact.phones : [];
+            return phones.some(p => {
+                const clean = formatToEgyptianDirectPhone(p);
+                return clean.startsWith("015") || (!clean.startsWith("010") && !clean.startsWith("011") && !clean.startsWith("012"));
+            });
+        }
+
+        /* =====================================================================
+           6. حالة البيانات ومحلل ملفات VCF المتقدم
+        ===================================================================== */
+        let contactsList = [];
+        let selectedIds = new Set();
+        let selectOneByOneMode = false;
+        let currentRenderLimit = 250;
+
+        function decodeQuotedPrintableUtf8(str) {
+            if (!str) return "";
+            let cleaned = str.replace(/=\r?\n/g, "");
+            const bytes = [];
+            for (let i = 0; i < cleaned.length; i++) {
+                if (cleaned[i] === "=" && i + 2 < cleaned.length) {
+                    const hex = cleaned.substring(i + 1, i + 3);
+                    if (/^[0-9A-Fa-f]{2}$/.test(hex)) {
+                        bytes.push(parseInt(hex, 16));
+                        i += 2;
+                        continue;
+                    }
+                }
+                bytes.push(cleaned.charCodeAt(i));
+            }
+            try {
+                return new TextDecoder("utf-8", { fatal: false }).decode(new Uint8Array(bytes));
+            } catch (e) {
+                return cleaned;
+            }
+        }
+
+        function parseVcfContent(vcfText) {
+            if (!vcfText) return [];
+            const rawLines = vcfText.split(/\r\n|\r|\n/);
+
+            const lines = [];
+            for (let i = 0; i < rawLines.length; i++) {
+                let line = rawLines[i];
+                if (lines.length > 0) {
+                    const prev = lines[lines.length - 1];
+                    const isPrevQP = /ENCODING=QUOTED-PRINTABLE/i.test(prev);
+                    if (
+                        (isPrevQP && prev.endsWith("=")) ||
+                        (isPrevQP && line.startsWith("=") && !line.includes(":")) ||
+                        line.startsWith(" ") ||
+                        line.startsWith("\t")
+                    ) {
+                        if (prev.endsWith("=")) {
+                            lines[lines.length - 1] = prev.slice(0, -1) + line;
+                        } else {
+                            lines[lines.length - 1] = prev + line.trimStart();
+                        }
+                        continue;
+                    }
+                }
+                lines.push(line);
+            }
+
+            const parsedContacts = [];
+            let currentCard = null;
+
+            for (let line of lines) {
+                line = line.trim();
+                if (!line) continue;
+
+                if (/^BEGIN:VCARD/i.test(line)) {
+                    currentCard = { fn: "", n: "", phones: [] };
+                    continue;
+                }
+                if (/^END:VCARD/i.test(line)) {
+                    if (currentCard) {
+                        let finalName = (currentCard.fn || currentCard.n || "").trim();
+                        if (!finalName && currentCard.phones.length > 0) {
+                            finalName = currentCard.phones[0];
+                        }
+                        if (finalName || currentCard.phones.length > 0) {
+                            parsedContacts.push({
+                                id: "vcf_" + Date.now() + "_" + Math.random().toString(36).substring(2, 9),
+                                name: finalName || "بدون اسم",
+                                phones: currentCard.phones
+                            });
+                        }
+                        currentCard = null;
+                    }
+                    continue;
+                }
+
+                if (!currentCard) continue;
+
+                const colonIdx = line.indexOf(":");
+                if (colonIdx === -1) continue;
+
+                const propHeader = line.substring(0, colonIdx);
+                let propValue = line.substring(colonIdx + 1).trim();
+                const isQP = /ENCODING=QUOTED-PRINTABLE/i.test(propHeader);
+
+                if (isQP) {
+                    propValue = decodeQuotedPrintableUtf8(propValue);
+                }
+
+                const propName = propHeader.split(";")[0].toUpperCase();
+
+                if (propName === "FN") {
+                    currentCard.fn = propValue.replace(/;+$/g, "").trim();
+                } else if (propName === "N") {
+                    const parts = propValue.split(";").map(s => s.trim()).filter(Boolean);
+                    currentCard.n = parts.join(" ").trim();
+                } else if (propName === "TEL") {
+                    // تحويل أي رقم يبدأ بـ 00201 إلى رقم مصري مباشر فور قراءته
+                    const cleanTel = formatToEgyptianDirectPhone(propValue);
+                    if (cleanTel) {
+                        currentCard.phones.push(cleanTel);
+                    }
+                }
+            }
+
+            return parsedContacts;
+        }
+
+        function triggerVcfImport() {
+            const input = document.getElementById("vcfFileInput");
+            input.value = "";
+            input.click();
+        }
+
+        async function handleVcfFileSelect(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            let totalImported = 0;
+            for (const file of files) {
+                const text = await file.text();
+                const extracted = parseVcfContent(text);
+                if (extracted.length > 0) {
+                    contactsList.push(...extracted);
+                    totalImported += extracted.length;
+                }
+            }
+
+            if (totalImported > 0) {
+                syncDataToServer();
+                renderContactsUI();
+                showToast(`✅ تم استيراد ${totalImported} جهة اتصال وتحويل الأرقام لمصري مباشر!`);
+            } else {
+                showToast("⚠️ لم يتم العثور على جهات اتصال صالحة في الملف");
+            }
+        }
+
+        function generateVcfString(listToExport) {
+            const out = [];
+            for (const c of listToExport) {
+                const safeName = (c.name || "Unknown").replace(/\r|\n/g, " ").trim();
+                out.push("BEGIN:VCARD");
+                out.push("VERSION:2.1");
+                out.push(`N:${safeName};;;;`);
+                out.push(`FN:${safeName}`);
+                if (Array.isArray(c.phones) && c.phones.length > 0) {
+                    for (const p of c.phones) {
+                        if (p && p.trim()) {
+                            out.push(`TEL;CELL:${formatToEgyptianDirectPhone(p.trim())}`);
+                        }
+                    }
+                }
+                out.push("END:VCARD");
+            }
+            return out.join("\r\n");
+        }
+
+        function exportVcfFile(onlySelected = false) {
+            let targetList = contactsList;
+            if (onlySelected) {
+                targetList = contactsList.filter(c => selectedIds.has(c.id));
+                if (targetList.length === 0) {
+                    showToast("⚠️ يرجى تحديد جهات اتصال أولاً للتصدير");
+                    return;
+                }
+            }
+            if (targetList.length === 0) {
+                showToast("⚠️ القائمة فارغة لا يوجد ما يتم تصديره");
+                return;
+            }
+
+            const vcfContent = generateVcfString(targetList);
+            const blob = new Blob([vcfContent], { type: "text/x-vcard;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+
+            const now = new Date();
+            const stamp = now.getFullYear().toString() +
+                String(now.getMonth() + 1).padStart(2, "0") +
+                String(now.getDate()).padStart(2, "0") + "_" +
+                String(now.getHours()).padStart(2, "0") +
+                String(now.getMinutes()).padStart(2, "0") +
+                String(now.getSeconds()).padStart(2, "0");
+
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `vcards_${stamp}.vcf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showToast(`📥 تم تصدير ${targetList.length} جهة اتصال في ملف VCF`);
+        }
+
+        /* =====================================================================
+           7. دوال مسح الاسم المتكرر ومسح الرقم المتكرر
+        ===================================================================== */
+        function normalizeNameKey(name) {
+            return (name || "").trim().toLowerCase().replace(/\s+/g, " ");
+        }
+
+        function normalizePhoneKey(phone) {
+            return formatToEgyptianDirectPhone(phone);
+        }
+
+        function countDuplicateStats() {
+            const seenNames = new Set();
+            let dupNames = 0;
+            const seenPhones = new Set();
+            let dupPhones = 0;
+
+            for (const c of contactsList) {
+                const nKey = normalizeNameKey(c.name);
+                if (nKey) {
+                    if (seenNames.has(nKey)) dupNames++;
+                    else seenNames.add(nKey);
+                }
+                if (Array.isArray(c.phones)) {
+                    for (const rawP of c.phones) {
+                        const pKey = normalizePhoneKey(rawP);
+                        if (pKey) {
+                            if (seenPhones.has(pKey)) dupPhones++;
+                            else seenPhones.add(pKey);
+                        }
+                    }
+                }
+            }
+            return { dupNames, dupPhones };
+        }
+
+        function openDuplicateNamesModal() {
+            const { dupNames } = countDuplicateStats();
+            if (dupNames === 0) {
+                showToast("✨ لا توجد أي أسماء متكررة في القائمة حالياً!");
+                return;
+            }
+            document.getElementById("dupNamesSummary").innerHTML =
+                `تم اكتشاف <strong>${dupNames}</strong> اسم متكرر في جهات الاتصال.<br>اختر الطريقة المناسبة للتعامل مع الأسماء المتكررة:`;
+            document.getElementById("dupNamesModal").classList.add("show");
+        }
+
+        function executeDuplicateNamesCleanup(mode) {
+            closeModal("dupNamesModal");
+            const mapByName = new Map();
+            const newList = [];
+            let removedCount = 0;
+
+            for (const c of contactsList) {
+                const key = normalizeNameKey(c.name);
+                if (!mapByName.has(key)) {
+                    const cloned = {
+                        id: c.id,
+                        name: c.name.trim(),
+                        phones: Array.isArray(c.phones) ? c.phones.map(formatToEgyptianDirectPhone) : []
+                    };
+                    mapByName.set(key, cloned);
+                    newList.push(cloned);
+                } else {
+                    removedCount++;
+                    if (mode === "merge") {
+                        const existing = mapByName.get(key);
+                        const existingNormSet = new Set(existing.phones.map(normalizePhoneKey));
+                        for (const p of (c.phones || [])) {
+                            const normP = normalizePhoneKey(p);
+                            if (normP && !existingNormSet.has(normP)) {
+                                existing.phones.push(normP);
+                                existingNormSet.add(normP);
+                            }
+                        }
+                    }
+                }
+            }
+
+            contactsList = newList;
+            selectedIds.clear();
+            syncDataToServer();
+            renderContactsUI();
+            showToast(`✅ تم مسح ومعالجة ${removedCount} اسم متكرر بنجاح!`);
+        }
+
+        function removeDuplicatePhones() {
+            const globalSeenPhones = new Set();
+            const cleanedContacts = [];
+            let removedPhonesCount = 0;
+            let removedEmptyCards = 0;
+
+            for (const c of contactsList) {
+                const uniquePhonesForCard = [];
+                const rawPhones = Array.isArray(c.phones) ? c.phones : [];
+
+                for (const p of rawPhones) {
+                    const norm = normalizePhoneKey(p);
+                    if (!norm) continue;
+                    if (!globalSeenPhones.has(norm)) {
+                        globalSeenPhones.add(norm);
+                        uniquePhonesForCard.push(norm);
+                    } else {
+                        removedPhonesCount++;
+                    }
+                }
+
+                if (uniquePhonesForCard.length > 0 || rawPhones.length === 0) {
+                    cleanedContacts.push({
+                        ...c,
+                        phones: uniquePhonesForCard
+                    });
+                } else {
+                    removedEmptyCards++;
+                }
+            }
+
+            if (removedPhonesCount === 0 && removedEmptyCards === 0) {
+                showToast("✨ لا توجد أي أرقام متكررة في القائمة!");
+                return;
+            }
+
+            contactsList = cleanedContacts;
+            selectedIds.clear();
+            syncDataToServer();
+            renderContactsUI();
+            showToast(`✅ تم مسح ${removedPhonesCount} رقم متكرر (${removedEmptyCards} بطاقة مكررة)!`);
+        }
+
+        /* =====================================================================
+           8. الفلترة والترتيب بـ 10 أولويات وأزرار التحديد
+        ===================================================================== */
+        function getFilteredContacts() {
+            const q = document.getElementById("searchInput").value.trim().toLowerCase();
+            let list = contactsList;
+            if (q) {
+                list = list.filter(c => {
+                    const nameMatch = (c.name || "").toLowerCase().includes(q);
+                    const phoneMatch = (c.phones || []).some(p =>
+                        p.toLowerCase().includes(q) || normalizePhoneKey(p).includes(q)
+                    );
+                    return nameMatch || phoneMatch;
+                });
+            }
+
+            // حساب تكرار الأسماء في حال اختيار أولوية الأسماء المتكررة
+            const nameCounts = new Map();
+            if (currentSortMode === "dup_first") {
+                for (const c of list) {
+                    const k = normalizeNameKey(c.name);
+                    nameCounts.set(k, (nameCounts.get(k) || 0) + 1);
+                }
+            }
+
+            const alphaCompare = (a, b) =>
+                (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+
+            return [...list].sort((a, b) => {
+                switch (currentSortMode) {
+                    case "az":
+                        return alphaCompare(a, b);
+                    case "za":
+                        return -alphaCompare(a, b);
+                    case "ar_first": {
+                        const aAr = isArabicName(a.name) ? 0 : 1;
+                        const bAr = isArabicName(b.name) ? 0 : 1;
+                        return aAr !== bAr ? aAr - bAr : alphaCompare(a, b);
+                    }
+                    case "en_first": {
+                        const aEn = !isArabicName(a.name) ? 0 : 1;
+                        const bEn = !isArabicName(b.name) ? 0 : 1;
+                        return aEn !== bEn ? aEn - bEn : alphaCompare(a, b);
+                    }
+                    case "vodafone_010": {
+                        const aHas = hasPhonePrefix(a, "010") ? 0 : 1;
+                        const bHas = hasPhonePrefix(b, "010") ? 0 : 1;
+                        return aHas !== bHas ? aHas - bHas : alphaCompare(a, b);
+                    }
+                    case "etisalat_011": {
+                        const aHas = hasPhonePrefix(a, "011") ? 0 : 1;
+                        const bHas = hasPhonePrefix(b, "011") ? 0 : 1;
+                        return aHas !== bHas ? aHas - bHas : alphaCompare(a, b);
+                    }
+                    case "orange_012": {
+                        const aHas = hasPhonePrefix(a, "012") ? 0 : 1;
+                        const bHas = hasPhonePrefix(b, "012") ? 0 : 1;
+                        return aHas !== bHas ? aHas - bHas : alphaCompare(a, b);
+                    }
+                    case "we_015_intl": {
+                        const aHas = isWeOrInternational(a) ? 0 : 1;
+                        const bHas = isWeOrInternational(b) ? 0 : 1;
+                        return aHas !== bHas ? aHas - bHas : alphaCompare(a, b);
+                    }
+                    case "multi_phones": {
+                        const aLen = (a.phones || []).length;
+                        const bLen = (b.phones || []).length;
+                        return bLen !== aLen ? bLen - aLen : alphaCompare(a, b);
+                    }
+                    case "dup_first": {
+                        const aDup = (nameCounts.get(normalizeNameKey(a.name)) || 0) > 1 ? 0 : 1;
+                        const bDup = (nameCounts.get(normalizeNameKey(b.name)) || 0) > 1 ? 0 : 1;
+                        return aDup !== bDup ? aDup - bDup : alphaCompare(a, b);
+                    }
+                    default:
+                        return alphaCompare(a, b);
+                }
+            });
+        }
+
+        function toggleSelectAll() {
+            const filtered = getFilteredContacts();
+            if (filtered.length === 0) {
+                showToast("⚠️ لا توجد جهات اتصال لتحديدها");
+                return;
+            }
+
+            const allFilteredSelected = filtered.every(c => selectedIds.has(c.id));
+            if (allFilteredSelected) {
+                filtered.forEach(c => selectedIds.delete(c.id));
+                showToast("تم إلغاء تحديد الكل");
+            } else {
+                filtered.forEach(c => selectedIds.add(c.id));
+                showToast(`☑️ تم تحديد ${filtered.length} جهة اتصال`);
+            }
+            renderContactsUI();
+        }
+
+        function toggleSelectOneByOneMode() {
+            selectOneByOneMode = !selectOneByOneMode;
+            document.body.classList.toggle("select-one-mode", selectOneByOneMode);
+            document.getElementById("btnSelectOneByOne").classList.toggle("active-mode", selectOneByOneMode);
+            if (selectOneByOneMode) {
+                showToast("👆 وضع تحديد واحد بواحد مفعّل: اضغط على أي اسم لتحديده");
+            } else {
+                showToast("تم إيقاف وضع التحديد الفردي");
+            }
+        }
+
+        function toggleSingleSelection(id, event) {
+            if (event) event.stopPropagation();
+            if (selectedIds.has(id)) {
+                selectedIds.delete(id);
+            } else {
+                selectedIds.add(id);
+            }
+            renderContactsUI();
+        }
+
+        function clearAllSelections() {
+            selectedIds.clear();
+            renderContactsUI();
+        }
+
+        function deleteSelectedContacts() {
+            if (selectedIds.size === 0) return;
+            const count = selectedIds.size;
+            contactsList = contactsList.filter(c => !selectedIds.has(c.id));
+            selectedIds.clear();
+            syncDataToServer();
+            renderContactsUI();
+            showToast(`🗑️ تم حذف ${count} جهة اتصال بنجاح`);
+        }
+
+        /* =====================================================================
+           9. بناء وعرض واجهة تطبيق Contacts مع أزرار واتساب وتلجرام
+        ===================================================================== */
+        const AVATAR_COLOR_CLASSES = [
+            "avatar-purple",
+            "avatar-green",
+            "avatar-amber",
+            "avatar-pink",
+            "avatar-blue"
+        ];
+
+        function getAvatarColorClass(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            return AVATAR_COLOR_CLASSES[Math.abs(hash) % AVATAR_COLOR_CLASSES.length];
+        }
+
+        function getFirstLetter(name) {
+            const clean = (name || "").trim();
+            if (!clean) return "#";
+            return clean[0].toUpperCase();
+        }
+
+        function getGroupHeaderForContact(c) {
+            if (currentSortMode === "vodafone_010") {
+                return hasPhonePrefix(c, "010") ? "⭐ أولوية فودافون (010)" : getFirstLetter(c.name);
+            }
+            if (currentSortMode === "etisalat_011") {
+                return hasPhonePrefix(c, "011") ? "⭐ أولوية اتصالات (011)" : getFirstLetter(c.name);
+            }
+            if (currentSortMode === "orange_012") {
+                return hasPhonePrefix(c, "012") ? "⭐ أولوية أورانج (012)" : getFirstLetter(c.name);
+            }
+            if (currentSortMode === "we_015_intl") {
+                return isWeOrInternational(c) ? "⭐ أولوية وي (015) والدولي" : getFirstLetter(c.name);
+            }
+            if (currentSortMode === "multi_phones") {
+                return (c.phones || []).length > 1 ? `⭐ متعدد الأرقام (${c.phones.length})` : getFirstLetter(c.name);
+            }
+            return getFirstLetter(c.name);
+        }
+
+        function renderContactsUI() {
+            const filtered = getFilteredContacts();
+            document.getElementById("totalContactsCount").textContent = filtered.length;
+
+            // تحديث شريط المحدد
+            const selBar = document.getElementById("selectionActionBar");
+            document.getElementById("selectedCountNum").textContent = selectedIds.size;
+            selBar.classList.toggle("show", selectedIds.size > 0);
+
+            const allSelected = filtered.length > 0 && filtered.every(c => selectedIds.has(c.id));
+            document.getElementById("selectAllLabel").textContent = allSelected ? "إلغاء تحديد الكل" : "تحديد الكل";
+            document.getElementById("btnSelectAll").classList.toggle("active-mode", allSelected);
+
+            // تحديث الإحصائيات
+            const totalPhones = contactsList.reduce((acc, c) => acc + (Array.isArray(c.phones) ? c.phones.length : 0), 0);
+            const { dupNames, dupPhones } = countDuplicateStats();
+            document.getElementById("statTotalContacts").textContent = contactsList.length;
+            document.getElementById("statTotalNumbers").textContent = totalPhones;
+            document.getElementById("statDupNames").textContent = dupNames;
+            document.getElementById("statDupPhones").textContent = dupPhones;
+
+            const wrapper = document.getElementById("contactsListWrapper");
+            if (filtered.length === 0) {
+                wrapper.innerHTML = `
+                    <div class="empty-state">
+                        <span class="material-symbols-outlined" style="font-size:48px;color:var(--accent);margin-bottom:8px;">contact_page</span>
+                        <div style="font-size:16px;font-weight:800;margin-bottom:6px;">لا توجد جهات اتصال حالياً</div>
+                        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">اضغط على "استيراد ملف VCF" أو أضف بيانات تجريبية لتجربة كافة المميزات</div>
+                        <button class="btn-primary" style="max-width:240px;" onclick="loadSampleVcfData()">تحميل بيانات تجريبية من صورك</button>
+                    </div>
+                `;
+                return;
+            }
+
+            const sliced = filtered.slice(0, currentRenderLimit);
+
+            const groups = new Map();
+            for (const c of sliced) {
+                const header = getGroupHeaderForContact(c);
+                if (!groups.has(header)) groups.set(header, []);
+                groups.get(header).push(c);
+            }
+
+            let html = "";
+            for (const [letter, items] of groups.entries()) {
+                html += `<div class="letter-group">`;
+                html += `<div class="letter-header">${escapeHtml(letter)}</div>`;
+                html += `<div class="group-cards-container">`;
+
+                for (const c of items) {
+                    const isSel = selectedIds.has(c.id);
+                    const colorCls = getAvatarColorClass(c.name + c.id);
+                    const firstChar = getFirstLetter(c.name);
+                    const phonesArr = (Array.isArray(c.phones) ? c.phones : []).map(formatToEgyptianDirectPhone);
+                    const firstPhone = phonesArr[0] || "";
+                    const extraBadge = phonesArr.length > 1
+                        ? `<span class="multi-num-badge">+${phonesArr.length - 1}</span>`
+                        : "";
+
+                    const socialBtnsHtml = firstPhone ? `
+                        <div class="row-social-actions" onclick="event.stopPropagation()">
+                            <a href="${getWhatsAppUrl(firstPhone)}" target="_blank" rel="noopener" class="social-circle-btn wa-btn" title="مراسلة واتساب (${escapeHtml(firstPhone)})">
+                                ${WHATSAPP_SVG}
+                            </a>
+                            <a href="${getTelegramUrl(firstPhone)}" target="_blank" rel="noopener" class="social-circle-btn tg-btn" title="مراسلة تلجرام (${escapeHtml(firstPhone)})">
+                                ${TELEGRAM_SVG}
+                            </a>
+                        </div>
+                    ` : "";
+
+                    html += `
+                        <div class="contact-item ${isSel ? 'selected' : ''}" onclick="handleContactRowClick('${c.id}')">
+                            <div class="contact-avatar ${colorCls}" onclick="toggleSingleSelection('${c.id}', event)" title="تحديد">
+                                ${isSel ? '<span class="material-symbols-outlined">check</span>' : escapeHtml(firstChar)}
+                            </div>
+                            <div class="contact-info">
+                                <div class="contact-name">${escapeHtml(c.name)}</div>
+                                <div class="contact-phones-preview">${escapeHtml(firstPhone || "بدون رقم")} ${extraBadge}</div>
+                            </div>
+                            ${socialBtnsHtml}
+                            <div class="one-by-one-check">
+                                ${isSel ? '<span class="material-symbols-outlined" style="font-size:16px">check</span>' : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                html += `</div></div>`;
+            }
+
+            if (filtered.length > currentRenderLimit) {
+                const remaining = filtered.length - currentRenderLimit;
+                html += `
+                    <button class="load-more-btn" onclick="showMoreContacts()">
+                        عرض المزيد (${remaining} جهة اتصال متبقية)
+                    </button>
+                `;
+            }
+
+            wrapper.innerHTML = html;
+        }
+
+        function showMoreContacts() {
+            currentRenderLimit += 400;
+            renderContactsUI();
+        }
+
+        function handleContactRowClick(id) {
+            if (selectOneByOneMode || selectedIds.size > 0) {
+                toggleSingleSelection(id);
+            } else {
+                openAddOrEditModal(id);
+            }
+        }
+
+        function handleSearch() {
+            currentRenderLimit = 250;
+            const val = document.getElementById("searchInput").value;
+            document.getElementById("clearSearchBtn").style.display = val ? "block" : "none";
+            renderContactsUI();
+        }
+
+        function clearSearch() {
+            document.getElementById("searchInput").value = "";
+            document.getElementById("clearSearchBtn").style.display = "none";
+            renderContactsUI();
+        }
+
+        /* =====================================================================
+           10. نافذة تفاصيل وتعديل جهة الاتصال (مع واتساب وتلجرام لكل رقم)
+        ===================================================================== */
+        function openAddOrEditModal(contactId = null) {
+            const modal = document.getElementById("contactModal");
+            const title = document.getElementById("contactModalTitle");
+            const idInp = document.getElementById("editContactId");
+            const nameInp = document.getElementById("contactNameInput");
+            const phonesInp = document.getElementById("contactPhonesInput");
+            const callList = document.getElementById("quickCallList");
+            const delBtn = document.getElementById("btnDeleteSingle");
+
+            if (contactId) {
+                const c = contactsList.find(item => item.id === contactId);
+                if (!c) return;
+                // تحويل الأرقام مباشرة للصيغة المصرية المباشرة بدون 00201
+                const directPhones = (c.phones || []).map(formatToEgyptianDirectPhone);
+
+                title.textContent = "تعديل / تفاصيل جهة الاتصال";
+                idInp.value = c.id;
+                nameInp.value = c.name;
+                phonesInp.value = directPhones.join("\n");
+                delBtn.style.display = "inline-block";
+
+                callList.innerHTML = directPhones.map(p => `
+                    <div class="phone-row-item">
+                        <span class="phone-number-text">${escapeHtml(p)}</span>
+                        <div class="phone-row-actions">
+                            <a href="${getWhatsAppUrl(p)}" target="_blank" rel="noopener" class="social-circle-btn wa-btn" title="مراسلة واتساب">
+                                ${WHATSAPP_SVG}
+                            </a>
+                            <a href="${getTelegramUrl(p)}" target="_blank" rel="noopener" class="social-circle-btn tg-btn" title="مراسلة تلجرام">
+                                ${TELEGRAM_SVG}
+                            </a>
+                            <a href="tel:${escapeHtml(p)}" class="circle-action" title="اتصال هاتفي">
+                                <span class="material-symbols-outlined" style="font-size:18px">call</span>
+                            </a>
+                            <button type="button" class="circle-action" onclick="copyText('${escapeHtml(p)}')" title="نسخ الرقم">
+                                <span class="material-symbols-outlined" style="font-size:18px">content_copy</span>
+                            </button>
+                        </div>
+                    </div>
+                `).join("");
+            } else {
+                title.textContent = "إضافة جهة اتصال جديدة";
+                idInp.value = "";
+                nameInp.value = "";
+                phonesInp.value = "";
+                callList.innerHTML = "";
+                delBtn.style.display = "none";
+            }
+
+            modal.classList.add("show");
+        }
+
+        function saveContactFromModal() {
+            const id = document.getElementById("editContactId").value;
+            const name = document.getElementById("contactNameInput").value.trim() || "بدون اسم";
+            const phones = document.getElementById("contactPhonesInput").value
+                .split(/\r?\n/)
+                .map(s => formatToEgyptianDirectPhone(s))
+                .filter(Boolean);
+
+            if (id) {
+                const idx = contactsList.findIndex(c => c.id === id);
+                if (idx !== -1) {
+                    contactsList[idx].name = name;
+                    contactsList[idx].phones = phones;
+                }
+                showToast("✅ تم تحديث جهة الاتصال وتحويل الأرقام لمصري مباشر");
+            } else {
+                contactsList.push({
+                    id: "c_" + Date.now(),
+                    name,
+                    phones
+                });
+                showToast("✅ تمت إضافة جهة الاتصال الجديدة");
+            }
+
+            closeModal("contactModal");
+            syncDataToServer();
+            renderContactsUI();
+        }
+
+        function deleteSingleFromModal() {
+            const id = document.getElementById("editContactId").value;
+            if (!id) return;
+            contactsList = contactsList.filter(c => c.id !== id);
+            selectedIds.delete(id);
+            closeModal("contactModal");
+            syncDataToServer();
+            renderContactsUI();
+            showToast("🗑️ تم حذف جهة الاتصال");
+        }
+
+        function openRawVcfModal() {
+            document.getElementById("rawVcfTextarea").value = generateVcfString(contactsList.slice(0, 100));
+            document.getElementById("rawVcfModal").classList.add("show");
+        }
+
+        function importFromRawTextarea() {
+            const txt = document.getElementById("rawVcfTextarea").value;
+            const extracted = parseVcfContent(txt);
+            if (extracted.length > 0) {
+                contactsList.push(...extracted);
+                closeModal("rawVcfModal");
+                syncDataToServer();
+                renderContactsUI();
+                showToast(`✅ تم استيراد ${extracted.length} جهة اتصال من النص`);
+            } else {
+                showToast("⚠️ الكود لا يحتوي على بطاقات VCARD صالحة");
+            }
+        }
+
+        function copyRawVcfText() {
+            const txt = document.getElementById("rawVcfTextarea").value;
+            copyText(txt);
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove("show");
+        }
+
+        function switchBottomTab(tabName) {
+            document.getElementById("tabContacts").classList.toggle("active", tabName === "contacts");
+            document.getElementById("tabHighlights").classList.toggle("active", tabName === "highlights");
+            document.getElementById("tabOrganize").classList.toggle("active", tabName === "organize");
+
+            document.getElementById("navBtnContacts").classList.toggle("active", tabName === "contacts");
+            document.getElementById("navBtnHighlights").classList.toggle("active", tabName === "highlights");
+            document.getElementById("navBtnOrganize").classList.toggle("active", tabName === "organize");
+        }
+
+        function deleteAllContactsConfirm() {
+            if (contactsList.length === 0) {
+                showToast("القائمة فارغة بالفعل");
+                return;
+            }
+            if (confirm("هل أنت متأكد من حذف جميع جهات الاتصال نهائياً؟")) {
+                contactsList = [];
+                selectedIds.clear();
+                syncDataToServer();
+                renderContactsUI();
+                showToast("🗑️ تم مسح جميع جهات الاتصال");
+            }
+        }
+
+        // بيانات تجريبية مستخرجة من صورك لتجربة التحويل الفوري وأزرار واتساب وتلجرام
+        function loadSampleVcfData() {
+            const sampleVcf = `BEGIN:VCARD
+VERSION:2.1
+N:roko. 8 _;;;;
+FN:roko. 8 _
+TEL;CELL:002-010-63016504
+TEL;CELL:00201063016504
+END:VCARD
+BEGIN:VCARD
+VERSION:2.1
+N:Samah Abdrazek Mahmoud;;;;
+FN:Samah Abdrazek Mahmoud
+TEL;CELL:010-941-81695
+TEL;CELL:01094181695
+TEL;CELL:+00201094181695
+TEL;CELL:002-010-94181695
+END:VCARD
+BEGIN:VCARD
+VERSION:2.1
+N:Samah Abdrazek Mahmoud;;;;
+FN:Samah Abdrazek Mahmoud
+TEL;CELL:010-941-81695
+END:VCARD
+BEGIN:VCARD
+VERSION:2.1
+N:Samar nasr G;;;;
+FN:Samar nasr G
+TEL;CELL:012-298-31445
+END:VCARD
+BEGIN:VCARD
+VERSION:2.1
+N:Samir Emam;;;;
+FN:Samir Emam
+TEL;CELL:010-048-75394
+END:VCARD
+BEGIN:VCARD
+VERSION:2.1
+N:Samurai Store ps4;;;;
+FN:Samurai Store ps4
+TEL;CELL:011-245-15145
+END:VCARD
+BEGIN:VCARD
+VERSION:2.1
+N:Sara;;;;
+FN:Sara
+TEL;CELL:012-202-48807
+END:VCARD
+BEGIN:VCARD
+VERSION:2.1
+N:Sara Eissa;;;;
+FN:Sara Eissa
+TEL;CELL:012-740-17283
+END:VCARD
+BEGIN:VCARD
+VERSION:2.1
+N:Sara menam;;;;
+FN:Sara menam
+TEL;CELL:011-178-04167
+END:VCARD
+BEGIN:VCARD
+VERSION:2.1
+N:Sara menam;;;;
+FN:Sara menam
+TEL;CELL:011-458-21127
+END:VCARD
+BEGIN:VCARD
+VERSION:2.1
+N:Sara osama;;;;
+FN:Sara osama
+TEL;CELL:010-138-12500
+END:VCARD
+BEGIN:VCARD
+VERSION:2.1
+N:Abdallah Naga;;;;
+FN:Abdallah Naga
+TEL;CELL:+00201203063874
+END:VCARD
+BEGIN:VCARD
+VERSION:2.1
+N:Abdallah Naga;;;;
+FN:Abdallah Naga
+TEL;CELL:+01203063874
+END:VCARD
+BEGIN:VCARD
+VERSION:2.1
+N:AbdalahRgab010;;;;
+FN:AbdalahRgab010
+TEL;CELL:+00201019575519
+END:VCARD
+BEGIN:VCARD
+VERSION:2.1
+N:Amira;;;;
+FN:Amira
+TEL;CELL:010-679-65583
+END:VCARD
+BEGIN:VCARD
+VERSION:2.1
+N:Ahmed Ashraf;;;;
+FN:Ahmed Ashraf
+TEL;CELL:010-615-07860
+END:VCARD
+BEGIN:VCARD
+VERSION:2.1
+N:Ahmed Ashraf;;;;
+FN:Ahmed Ashraf
+TEL;CELL:012-269-03584
+END:VCARD
+BEGIN:VCARD
+VERSION:2.1
+N:;Bc;;;
+FN:Bc
+TEL;CELL:011-407-37161
+END:VCARD`;
+
+            const parsed = parseVcfContent(sampleVcf);
+            contactsList.push(...parsed);
+            syncDataToServer();
+            renderContactsUI();
+            switchBottomTab("contacts");
+            showToast(`✅ تمت إضافة ${parsed.length} جهة اتصال مع تحويل الأرقام لمصري مباشر!`);
+        }
+
+        function escapeHtml(str) {
+            return String(str || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function copyText(txt) {
+            navigator.clipboard?.writeText(txt);
+            showToast("📋 تم النسخ إلى الحافظة");
+        }
+
+        let toastTimer = null;
+        function showToast(msg) {
+            const box = document.getElementById("toastBox");
+            box.textContent = msg;
+            box.classList.add("show");
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => box.classList.remove("show"), 2800);
+        }
+
+        /* =====================================================================
+           11. تشغيل التطبيق عند فتح الصفحة
+        ===================================================================== */
+        window.addEventListener("DOMContentLoaded", () => {
+            if (sessionStorage.getItem("vcf_app_unlocked") === "true") {
+                document.getElementById("lockScreen").classList.add("hidden");
+            }
+
+            const savedTheme = localStorage.getItem("vcf_preferred_theme") || "midnight";
+            setTheme(savedTheme);
+
+            loadFromLocalCache();
+            convertAllPhonesToEgyptianDirect(false);
+            renderContactsUI();
+            initFirebaseServer();
+        });
+    </script>
+</body>
+</html>
